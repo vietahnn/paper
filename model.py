@@ -198,20 +198,35 @@ class MultiStreamSLR(nn.Module):
         yield from self.face_encoder.avgpool.parameters()
 
     def freeze_backbones(self):
-        """Freeze all CNN backbone parameters (stage-1 training)."""
+        """Freeze CNN weights AND set to eval() to fix BatchNorm stats."""
         for param in self.hand_encoder.backbone.parameters():
             param.requires_grad = False
         for param in self._face_backbone_params():
             param.requires_grad = False
-        print("[Model] Backbones FROZEN — training heads only.")
+        # Critical: eval() stops BatchNorm from updating running stats
+        # with noisy mini-batch stats while frozen
+        self.hand_encoder.backbone.eval()
+        self.face_encoder.features.eval()
+        print("[Model] Backbones FROZEN + eval() — training heads only.")
 
     def unfreeze_backbones(self):
-        """Unfreeze backbones for end-to-end fine-tuning (stage-2)."""
+        """Unfreeze backbones and restore train() mode."""
         for param in self.hand_encoder.backbone.parameters():
             param.requires_grad = True
         for param in self._face_backbone_params():
             param.requires_grad = True
-        print("[Model] Backbones UNFROZEN — full fine-tuning.")
+        self.hand_encoder.backbone.train()
+        self.face_encoder.features.train()
+        print("[Model] Backbones UNFROZEN + train() — full fine-tuning.")
+
+    def train(self, mode: bool = True):
+        """Override train() to keep frozen backbones in eval() mode."""
+        super().train(mode)
+        # If backbones are frozen, keep them in eval() regardless
+        if not self.hand_encoder.backbone.parameters().__next__().requires_grad:
+            self.hand_encoder.backbone.eval()
+            self.face_encoder.features.eval()
+        return self
 
     # ── forward ───────────────────────────────────────────────────────
 
