@@ -192,11 +192,16 @@ class MultiStreamSLR(nn.Module):
 
     # ── public API ────────────────────────────────────────────────────
 
+    def _face_backbone_params(self):
+        """Yield all FaceEncoder CNN params (features + avgpool)."""
+        yield from self.face_encoder.features.parameters()
+        yield from self.face_encoder.avgpool.parameters()
+
     def freeze_backbones(self):
         """Freeze all CNN backbone parameters (stage-1 training)."""
         for param in self.hand_encoder.backbone.parameters():
             param.requires_grad = False
-        for param in self.face_encoder.backbone.parameters():
+        for param in self._face_backbone_params():
             param.requires_grad = False
         print("[Model] Backbones FROZEN — training heads only.")
 
@@ -204,7 +209,7 @@ class MultiStreamSLR(nn.Module):
         """Unfreeze backbones for end-to-end fine-tuning (stage-2)."""
         for param in self.hand_encoder.backbone.parameters():
             param.requires_grad = True
-        for param in self.face_encoder.backbone.parameters():
+        for param in self._face_backbone_params():
             param.requires_grad = True
         print("[Model] Backbones UNFROZEN — full fine-tuning.")
 
