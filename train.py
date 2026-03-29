@@ -272,24 +272,25 @@ CONFIG = {
     # ── data ─────────────────────────────────
     "num_frames"  : 16,
     "img_size"    : 112,
-    "num_workers" : 2,          # keep low on Kaggle
+    "num_workers" : 2,
 
     # ── model ────────────────────────────────
     "feat_dim"    : 256,
-    "dropout"     : 0.5,
+    "dropout"     : 0.4,
 
     # ── training ─────────────────────────────
-    "batch_size"     : 8,       # adjust based on GPU memory
+    "batch_size"     : 16,      # larger batch = more stable gradients
     "weight_decay"   : 1e-4,
 
-    # stage 1 — heads only
-    "epochs_stage1"  : 15,
-    "lr_stage1"      : 3e-4,
+    # stage 1 — heads only (backbone frozen)
+    # Higher LR is safe because backbone is frozen
+    "epochs_stage1"  : 20,
+    "lr_stage1"      : 1e-3,    # 3x higher — heads learn faster
 
     # stage 2 — full fine-tune
-    "epochs_stage2"  : 30,
-    "lr_stage2"      : 1e-4,
-    "lr_backbone"    : 1e-5,    # 10x lower LR for pretrained layers
+    "epochs_stage2"  : 35,
+    "lr_stage2"      : 3e-4,
+    "lr_backbone"    : 1e-5,    # 30x lower than heads for pretrained layers
 }
 
 if __name__ == "__main__":
