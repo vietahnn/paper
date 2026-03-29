@@ -214,10 +214,13 @@ def train(cfg: dict):
     trainable, _ = count_params(model)
     print(f"  Trainable params : {trainable:,}\n")
 
+    face_cnn_params = list(model.face_encoder.features.parameters()) + \
+                      list(model.face_encoder.avgpool.parameters())
+
     optimizer = AdamW(
         [
             {"params": model.hand_encoder.backbone.parameters(), "lr": cfg["lr_backbone"]},
-            {"params": model.face_encoder.backbone.parameters(), "lr": cfg["lr_backbone"]},
+            {"params": face_cnn_params,                          "lr": cfg["lr_backbone"]},
             {"params": model.hand_encoder.proj.parameters(),     "lr": cfg["lr_stage2"]},
             {"params": model.face_encoder.proj.parameters(),     "lr": cfg["lr_stage2"]},
             {"params": model.temporal.parameters(),              "lr": cfg["lr_stage2"]},
