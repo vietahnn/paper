@@ -43,28 +43,37 @@ class FaceEncoder(nn.Module):
     Lightweight MobileNetV3-Small backbone for face crops.
     Separate weights because face features differ from hand features.
 
+    MobileNetV3-Small architecture:
+      features → avgpool → flatten → (576,) → classifier[0] Linear(576→1024) → ...
+    We extract the 576-dim vector BEFORE the classifier by using
+    features + avgpool directly, so in_features = 576 always.
+
     Output: (B, feat_dim)
     """
+
+    IN_FEATURES = 576   # hardcoded — MobileNetV3-Small is fixed
 
     def __init__(self, feat_dim: int = 256, pretrained: bool = True):
         super().__init__()
         weights = MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
-        backbone = mobilenet_v3_small(weights=weights)
+        net = mobilenet_v3_small(weights=weights)
 
-        in_features = backbone.classifier[3].in_features   # 1024
-        backbone.classifier = nn.Identity()
+        # Keep only the feature extractor + pooling; discard classifier entirely
+        self.features = net.features
+        self.avgpool  = net.avgpool   # AdaptiveAvgPool2d(1)
 
-        self.backbone = backbone
-        self.proj     = nn.Sequential(
-            nn.Linear(in_features, feat_dim),
+        self.proj = nn.Sequential(
+            nn.Linear(self.IN_FEATURES, feat_dim),
             nn.GELU(),
             nn.Dropout(0.1),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """x: (B, C, H, W) → (B, feat_dim)"""
-        feat = self.backbone(x)
-        return self.proj(feat)
+        x = self.features(x)        # (B, 96, H', W')
+        x = self.avgpool(x)         # (B, 96, 1, 1)  — wait, actual channels=576 after features
+        x = x.flatten(1)            # (B, 576)
+        return self.proj(x)         # (B, feat_dim)
 
 
 # ──────────────────────────────────────────────
